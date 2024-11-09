@@ -1,70 +1,147 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Button, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const HealthProfileScreen: React.FC = () => {
+  const [age, setAge] = useState('');
+  const [lastPeriod, setLastPeriod] = useState('');
+  const [menopauseStatus, setMenopauseStatus] = useState('');
+  const [pregnancyStatus, setPregnancyStatus] = useState('');
+  const [contraception, setContraception] = useState('');
+  const [medicalHistory, setMedicalHistory] = useState('');
+  const [medications, setMedications] = useState('');
+  const [lastPapSmear, setLastPapSmear] = useState('');
+  const [lastMammogram, setLastMammogram] = useState('');
+  const userId = firebase.auth().currentUser?.uid;
 
-export default function HomeScreen() {
+  const handleSubmit = async () => {
+    if (!userId) return Alert.alert('User not authenticated');
+  
+    try {
+      // Get a reference to the document with userId as the ID
+      const healthProfileRef = firebase.firestore().collection('healthProfiles').doc(userId);
+
+      // Set data with the timestamp field
+      await healthProfileRef.set({
+        age,
+        lastPeriod,
+        menopauseStatus,
+        pregnancyStatus,
+        contraception,
+        medicalHistory,
+        medications,
+        lastPapSmear,
+        lastMammogram,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });  // Merge the data, so it updates existing profile instead of overwriting
+
+      Alert.alert('Profile information updated successfully!');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      Alert.alert('Error saving profile information', errorMessage);
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Health Profile</Text>
+
+      <Text style={styles.label}>Age:</Text>
+      <TextInput
+        style={styles.input}
+        value={age}
+        onChangeText={setAge}
+        keyboardType="numeric"
+        placeholder="Enter your age"
+      />
+
+      <Text style={styles.label}>Last Period (days ago):</Text>
+      <TextInput
+        style={styles.input}
+        value={lastPeriod}
+        onChangeText={setLastPeriod}
+        keyboardType="numeric"
+        placeholder="Enter days since last period"
+      />
+
+      <Text style={styles.label}>Menopause Status:</Text>
+      <Picker
+        selectedValue={menopauseStatus}
+        onValueChange={(value) => setMenopauseStatus(value)}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select status" value="" />
+        <Picker.Item label="Yes" value="yes" />
+        <Picker.Item label="No" value="no" />
+      </Picker>
+
+      <Text style={styles.label}>Pregnancy Status:</Text>
+      <Picker
+        selectedValue={pregnancyStatus}
+        onValueChange={(value) => setPregnancyStatus(value)}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select status" value="" />
+        <Picker.Item label="Yes" value="yes" />
+        <Picker.Item label="No" value="no" />
+      </Picker>
+
+      <Text style={styles.label}>Contraception Use:</Text>
+      <Picker
+        selectedValue={contraception}
+        onValueChange={(value) => setContraception(value)}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select option" value="" />
+        <Picker.Item label="Yes" value="yes" />
+        <Picker.Item label="No" value="no" />
+      </Picker>
+
+      <Text style={styles.label}>Medical History:</Text>
+      <TextInput
+        style={styles.input}
+        value={medicalHistory}
+        onChangeText={setMedicalHistory}
+        placeholder="Enter any medical history"
+      />
+
+      <Text style={styles.label}>Medications:</Text>
+      <TextInput
+        style={styles.input}
+        value={medications}
+        onChangeText={setMedications}
+        placeholder="Enter any medications"
+      />
+
+      <Text style={styles.label}>Last Pap Smear:</Text>
+      <TextInput
+        style={styles.input}
+        value={lastPapSmear}
+        onChangeText={setLastPapSmear}
+        placeholder="Enter date of last pap smear"
+      />
+
+      <Text style={styles.label}>Last Mammogram:</Text>
+      <TextInput
+        style={styles.input}
+        value={lastMammogram}
+        onChangeText={setLastMammogram}
+        placeholder="Enter date of last mammogram"
+      />
+
+      <Button title="Submit" onPress={handleSubmit} />
+    </ScrollView>
   );
-}
+};
+
+export default HealthProfileScreen;
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5' },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  label: { fontSize: 16, marginVertical: 10 },
+  input: { height: 50, borderColor: 'gray', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, backgroundColor: 'white', marginBottom: 10 },
+  picker: { height: 50, borderColor: 'gray', borderWidth: 1, marginBottom: 20 },
 });
