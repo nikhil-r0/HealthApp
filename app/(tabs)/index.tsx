@@ -1,147 +1,197 @@
-import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity } from 'react-native';
+import { db } from '@/firebaseConfig'; // Ensure db is correctly imported
+import { collection, getDocs } from 'firebase/firestore';
 
-const HealthProfileScreen: React.FC = () => {
-  const [age, setAge] = useState('');
-  const [lastPeriod, setLastPeriod] = useState('');
-  const [menopauseStatus, setMenopauseStatus] = useState('');
-  const [pregnancyStatus, setPregnancyStatus] = useState('');
-  const [contraception, setContraception] = useState('');
-  const [medicalHistory, setMedicalHistory] = useState('');
-  const [medications, setMedications] = useState('');
-  const [lastPapSmear, setLastPapSmear] = useState('');
-  const [lastMammogram, setLastMammogram] = useState('');
-  const userId = firebase.auth().currentUser?.uid;
+interface Blog {
+  title: string;
+  body: string;
+  youtubeLink?: string;
+}
 
-  const handleSubmit = async () => {
-    if (!userId) return Alert.alert('User not authenticated');
-  
+// Function to render blog content dynamically
+const renderContent = (content: string) => {
+  const pointsSection = content.split('//START OF POINTS//')[1]?.split('//END OF POINTS//')[0];
+  const paragraphsBeforePoints = content.split('//START OF POINTS//')[0];
+  const paragraphsAfterPoints = content.split('//END OF POINTS//')[1];
+
+  const points = pointsSection ? pointsSection.split('//END OF POINT//').map((point, index) => point && (
+    <View key={index} style={styles.pointContainer}>
+      <Text style={styles.pointText}>- {point.trim()}</Text>
+    </View>
+  )) : null;
+
+  const paragraphsBefore = paragraphsBeforePoints.split('//END OF PARA//').map((para, index) => (
+    <Text key={index} style={styles.bodyText}>{para}</Text>
+  ));
+
+  const paragraphsAfter = paragraphsAfterPoints.split('//END OF PARA//').map((para, index) => (
+    <Text key={index} style={styles.bodyText}>{para}</Text>
+  ));
+
+  return (
+    <>
+      {paragraphsBefore}
+      {points}
+      {paragraphsAfter}
+    </>
+  );
+};
+
+const HomePage: React.FC = () => {
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+
+  // Function to fetch blogs from Firestore
+  const fetchBlogs = async () => {
     try {
-      // Get a reference to the document with userId as the ID
-      const healthProfileRef = firebase.firestore().collection('healthProfiles').doc(userId);
-
-      // Set data with the timestamp field
-      await healthProfileRef.set({
-        age,
-        lastPeriod,
-        menopauseStatus,
-        pregnancyStatus,
-        contraception,
-        medicalHistory,
-        medications,
-        lastPapSmear,
-        lastMammogram,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });  // Merge the data, so it updates existing profile instead of overwriting
-
-      Alert.alert('Profile information updated successfully!');
+      const querySnapshot = await getDocs(collection(db, 'blogs'));
+      const blogList: Blog[] = [];
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        blogList.push({
+          title: data.title,
+          body: data.body,
+          youtubeLink: data.youtubeLink,
+        });
+      });
+      setBlogs(blogList);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      Alert.alert('Error saving profile information', errorMessage);
+      console.error("Error fetching blogs:", error);
     }
   };
 
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Health Profile</Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.introduction}>
+        <Text style={styles.title}>Welcome to the Health Tracking App</Text>
+        <Text style={styles.subtitle}>
+          Keep track of your health and wellness with our app's cycle tracking and health profile features.
+        </Text>
+        <Text style={styles.bodyText}>
+          Maintaining an up-to-date health profile and tracking your cycle regularly can help with accurate diagnoses and
+          better health management. Record your symptoms, notes, and track your menstrual cycle to receive personalized
+          insights and recommendations.
+        </Text>
+        <Text style={styles.bodyText}>
+          Explore our blogs for helpful tips on health and wellness, and stay informed on how to take better care of
+          yourself.
+        </Text>
+      </View>
 
-      <Text style={styles.label}>Age:</Text>
-      <TextInput
-        style={styles.input}
-        value={age}
-        onChangeText={setAge}
-        keyboardType="numeric"
-        placeholder="Enter your age"
-      />
-
-      <Text style={styles.label}>Last Period (days ago):</Text>
-      <TextInput
-        style={styles.input}
-        value={lastPeriod}
-        onChangeText={setLastPeriod}
-        keyboardType="numeric"
-        placeholder="Enter days since last period"
-      />
-
-      <Text style={styles.label}>Menopause Status:</Text>
-      <Picker
-        selectedValue={menopauseStatus}
-        onValueChange={(value) => setMenopauseStatus(value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select status" value="" />
-        <Picker.Item label="Yes" value="yes" />
-        <Picker.Item label="No" value="no" />
-      </Picker>
-
-      <Text style={styles.label}>Pregnancy Status:</Text>
-      <Picker
-        selectedValue={pregnancyStatus}
-        onValueChange={(value) => setPregnancyStatus(value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select status" value="" />
-        <Picker.Item label="Yes" value="yes" />
-        <Picker.Item label="No" value="no" />
-      </Picker>
-
-      <Text style={styles.label}>Contraception Use:</Text>
-      <Picker
-        selectedValue={contraception}
-        onValueChange={(value) => setContraception(value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select option" value="" />
-        <Picker.Item label="Yes" value="yes" />
-        <Picker.Item label="No" value="no" />
-      </Picker>
-
-      <Text style={styles.label}>Medical History:</Text>
-      <TextInput
-        style={styles.input}
-        value={medicalHistory}
-        onChangeText={setMedicalHistory}
-        placeholder="Enter any medical history"
-      />
-
-      <Text style={styles.label}>Medications:</Text>
-      <TextInput
-        style={styles.input}
-        value={medications}
-        onChangeText={setMedications}
-        placeholder="Enter any medications"
-      />
-
-      <Text style={styles.label}>Last Pap Smear:</Text>
-      <TextInput
-        style={styles.input}
-        value={lastPapSmear}
-        onChangeText={setLastPapSmear}
-        placeholder="Enter date of last pap smear"
-      />
-
-      <Text style={styles.label}>Last Mammogram:</Text>
-      <TextInput
-        style={styles.input}
-        value={lastMammogram}
-        onChangeText={setLastMammogram}
-        placeholder="Enter date of last mammogram"
-      />
-
-      <Button title="Submit" onPress={handleSubmit} />
+      {/* Blog List */}
+      <View style={styles.blogSection}>
+        <Text style={styles.blogSectionTitle}>Latest Health Blogs</Text>
+        {blogs.length === 0 ? (
+          <Text style={styles.bodyText}>No blogs available at the moment. Please check back later.</Text>
+        ) : (
+          blogs.map((blog, index) => (
+            <View key={index} style={styles.blogContainer}>
+              <Text style={styles.blogTitle}>{blog.title}</Text>
+              <View style={styles.blogBody}>{renderContent(blog.body)}</View>
+              {blog.youtubeLink && (
+                <TouchableOpacity onPress={() => Linking.openURL(blog.youtubeLink || '')}>
+                  <Text style={styles.linkText}>Watch the video</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 };
 
-export default HealthProfileScreen;
-
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5' },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  label: { fontSize: 16, marginVertical: 10 },
-  input: { height: 50, borderColor: 'gray', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, backgroundColor: 'white', marginBottom: 10 },
-  picker: { height: 50, borderColor: 'gray', borderWidth: 1, marginBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9', // Light gray background for the whole page
+    padding: 16,
+  },
+  introduction: {
+    marginBottom: 20,
+    backgroundColor: '#fff', // White background for the introduction section
+    padding: 15,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5, // For Android shadow
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700', // Bold and professional font weight
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#777',
+    marginBottom: 15,
+  },
+  bodyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 22, // For better readability
+    color: '#555',
+  },
+  blogSection: {
+    marginTop: 20,
+  },
+  blogSectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  blogContainer: {
+    marginBottom: 20,
+    backgroundColor: '#fff', // White background for individual blogs
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0', // Light border for separation
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2, // For Android shadow
+  },
+  blogTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 10,
+    color: '#333',
+  },
+  blogBody: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#555',
+    lineHeight: 22, // For better readability
+  },
+  linkText: {
+    fontSize: 16,
+    color: '#007BFF',
+    textAlign: 'center',
+    marginTop: 10,
+    fontWeight: '600',
+  },
+  pointContainer: {
+    marginLeft: 15,
+    marginBottom: 5,
+  },
+  pointText: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 22,
+  },
 });
+
+export default HomePage;

@@ -1,22 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, Alert, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-
-// Initialize Firebase only if it hasn't been initialized already
-if (!firebase.apps.length) {
-  const config = {
-    apiKey: "AIzaSyBexdERIUu_9MjXuw1XWgQaU1c4ZWw4cxQ",
-    authDomain: "healthapp-c5029.firebaseapp.com",
-    projectId: "healthapp-c5029",
-    storageBucket: "healthapp-c5029.firebasestorage.app",
-    messagingSenderId: "444175138206",
-    appId: "1:444175138206:web:fa655d674f421c94f36a8f",
-    measurementId: "G-X466FFJFS0"
-  };
-  firebase.initializeApp(config);
-}
+import { auth } from '@/firebaseConfig';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
 function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -25,27 +11,26 @@ function SignInScreen() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Check if the user is already signed in
-    const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("Previously Signed In");
-        navigation.replace('(tabs)');  // Navigate to Home if already signed in
+        navigation.replace('(tabs)');  // Replace with your main navigation screen
       }
     });
-    return unsubscribe; // Unsubscribe on unmount
+    return unsubscribe;
   }, []);
 
   const handleSignIn = () => {
-    firebase.auth().signInWithEmailAndPassword(email, password)
+    signInWithEmailAndPassword(auth, email, password)
       .then(() => {
         Alert.alert('Signed in successfully!');
-        navigation.replace('(tabs)'); // Navigate to Home on successful sign-in
+        navigation.replace('(tabs)');  // Replace with your main navigation screen
       })
       .catch(error => Alert.alert('Sign-In Error', error.message));
   };
 
   const handleSignUp = () => {
-    firebase.auth().createUserWithEmailAndPassword(email, password)
+    createUserWithEmailAndPassword(auth, email, password)
       .then(() => {
         Alert.alert('Account created successfully! Please sign in.');
         setIsSignUp(false);
